@@ -57,6 +57,6 @@ camera_pitch :: proc (cam: ^rl.Camera, angle: f32) {
     if angle < maxDown {transformedAngle = maxDown}
 
     right := get_right(cam)
-    target = rotateByAxisAngle_f32(target, right, transformedAngle)
+    target = rotate_axis_angle_f32(target, right, transformedAngle)
     cam.target = cam.position + target
 }
