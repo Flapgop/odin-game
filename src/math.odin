@@ -10,21 +10,10 @@ sign :: proc (i: f32) -> f32 {
     return i
 }
 
-normalize_f32 :: proc(v: linalg.Vector3f32) -> linalg.Vector3f32 {
+rotate_axis_angle_f32 :: proc(v, axis: linalg.Vector3f32, angle: f32) -> linalg.Vector3f32 { // rotate vector around an axis by an angle
     result := linalg.Vector3f32{v.x, v.y, v.z}
 
-    length := math.sqrt_f32(v.x*v.x+v.y*v.y+v.z*v.z)
-    if length != 0 {
-        ilength := 1/length
-        result *= ilength
-    }
-    return result
-}
-
-rotateByAxisAngle_f32 :: proc(v, axis: linalg.Vector3f32, angle: f32) -> linalg.Vector3f32 {
-    result := linalg.Vector3f32{v.x, v.y, v.z}
-
-    length := math.sqrt_f32(axis.x*axis.x+axis.y*axis.y+axis.z*axis.z)
+    length := linalg.length(axis)
     if length == 0 {length = 1.0}
     ilength := 1/length
 
@@ -39,9 +28,9 @@ rotateByAxisAngle_f32 :: proc(v, axis: linalg.Vector3f32, angle: f32) -> linalg.
     return result+wv+wwv
 }
 
-angle_f32 :: proc(v1, v2: linalg.Vector3f32) -> f32 {
+angle_f32 :: proc(v1, v2: linalg.Vector3f32) -> f32 { // the angle between two vectors, eg. an up vector and a facing vector.
     cross := linalg.vector_cross3(v1, v2)
-    len := math.sqrt_f32(cross.x*cross.x+cross.y*cross.y+cross.z*cross.z)
+    len := linalg.length(cross)
     dot := linalg.vector_dot(v1,v2)
     return math.atan2_f32(len,dot)
 }
