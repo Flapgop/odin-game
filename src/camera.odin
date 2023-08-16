@@ -4,17 +4,17 @@ import "core:fmt"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-MOVE_SPEED :: 1
-SENSITIVITY :: 1
+MOVE_SPEED :: 10
+SENSITIVITY :: 0.05
 
 handle_movement :: proc(cam: ^rl.Camera) {
     delta := rl.GetFrameTime()
-    if rl.IsKeyDown(.W) do move_camera(cam, delta, get_forward(cam)*MOVE_SPEED)
-    if rl.IsKeyDown(.A) do move_camera(cam, delta, -get_right(cam)*MOVE_SPEED)
-    if rl.IsKeyDown(.S) do move_camera(cam, delta, -get_forward(cam)*MOVE_SPEED)
-    if rl.IsKeyDown(.D) do move_camera(cam, delta, get_right(cam)*MOVE_SPEED)
+    if rl.IsKeyDown(.W) do move_camera(cam, delta, get_forward(cam)*MOVE_SPEED*delta)
+    if rl.IsKeyDown(.A) do move_camera(cam, delta, -get_right(cam)*MOVE_SPEED*delta)
+    if rl.IsKeyDown(.S) do move_camera(cam, delta, -get_forward(cam)*MOVE_SPEED*delta)
+    if rl.IsKeyDown(.D) do move_camera(cam, delta, get_right(cam)*MOVE_SPEED*delta)
 
-    mouseDelta := rl.GetMouseDelta()*SENSITIVITY
+    mouseDelta := -rl.GetMouseDelta()*SENSITIVITY*delta
     camera_yaw(cam, mouseDelta.x)
     camera_pitch(cam, mouseDelta.y)
 }

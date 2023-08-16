@@ -1,6 +1,5 @@
 package main
 
-import "tests"
 import "core:os"
 import "core:fmt"
 import "core:math"
@@ -11,10 +10,6 @@ import rl "vendor:raylib"
 Vector3f32 :: linalg.Vector3f32
 
 main :: proc () {   
-    if len(os.args)>1 && os.args[1] == "test" {
-        tests.run_tests()
-        return
-    }
     rl.SetConfigFlags({.WINDOW_TRANSPARENT, .WINDOW_UNDECORATED, .MSAA_4X_HINT})
     rl.InitWindow(1280,720,"Game")
     defer rl.CloseWindow()
@@ -71,23 +66,7 @@ main :: proc () {
     defer rl.EnableCursor()
     rl.SetTargetFPS(90)
     for !rl.WindowShouldClose() {
-        delta := rl.GetFrameTime()
-        moveSpeed: f32 = 10
-        if !onGround do moveSpeed *= 0.5
-        if rl.IsKeyDown(.LEFT_CONTROL) {moveSpeed *= 3}
-        if rl.IsKeyDown(.LEFT_SHIFT) {moveSpeed /= 3}
-        if rl.IsKeyDown(.SPACE) && !jumping && onGround {
-            jumping = true
-            onGround = false
-            playerVel.y += 20*delta
-        }
-        if rl.IsKeyDown(.W) {playerVel -= -getRelativeForward(&camera)*moveSpeed*delta}
-        if rl.IsKeyDown(.A) {playerVel -= getRelativeRight(&camera)*moveSpeed*delta}
-        if rl.IsKeyDown(.S) {playerVel -= getRelativeForward(&camera)*moveSpeed*delta}
-        if rl.IsKeyDown(.D) {playerVel -= -getRelativeRight(&camera)*moveSpeed*delta}
-        mouseDelta := rl.GetMouseDelta()
-        cameraYaw(&camera, -mouseDelta.x*0.05*delta)
-        cameraPitch(&camera, -mouseDelta.y*0.05*delta)
+        handle_movement(cam)
 
         if !onGround {
             playerVel.y -= delta
@@ -96,18 +75,23 @@ main :: proc () {
         predictedPos := (camera.position+playerVel)-Vector3f32{0,1.75,0}
         predictedBB := rl.BoundingBox{playerOriginalBB.min + predictedPos, playerOriginalBB.max + predictedPos}
         notTouchingCount := len(objects)
-        for object in objects {
+        for object in objects { // O(n^2) sucks, but I am absolutely not prepared to implement a sweep algorithm to make it O(n log(n)) or O(log(n)+n)
+            // this is actually only O(n+1), because I'm checking every object against the player
+            // however if I were to add more dynamic objects other than the player this would end horribly
+            // this also technically has support for rotation and OBB but that's a really complicated system
+            // that requires torque and such to function properly
+            // I have this in a different system but it functions weirdly to say the least
             bb := object.boundingBox
             if rl.CheckCollisionBoxes(predictedBB, bb) {
-                predictedCenter := predictedBB.min + (predictedBB.max - predictedBB.min) * 0.5
-                bbCenter := bb.min + (bb.max - bb.min) * 0.5
-                relativeCenter := bbCenter-predictedCenter
-                predictedExtents := predictedBB.max-predictedBB.min
-                bbExtents := bb.max-bb.min
-                overlap := (predictedExtents+bbExtents)-linalg.abs(relativeCenter)
+                predictedCenter := predictedBB.min + (predictedBB.max - predictedBB.min) * 0.5 // get the center of the predicted bounding box
+                bbCenter := bb.min + (bb.max - bb.min) * 0.5 // get the center of the collided bounding box
+                relativeCenter := bbCenter-predictedCenter // get the center between these two objects, this is most likely the point of collision
+                predictedExtents := predictedBB.max-predictedBB.min // get the extents of the predicted bounding box, effectively normalize it
+                bbExtents := bb.max-bb.min // get the extents of the collided bounding box
+                overlap := (predictedExtents+bbExtents)-linalg.abs(relativeCenter) // get the overlap between the predicted bounding box and the collided object
 
-                collisionNormal := linalg.normalize(relativeCenter)
-                if (overlap.x < overlap.y && overlap.x < overlap.z) {
+                collisionNormal := linalg.normalize(relativeCenter) // get the normal of the collision point
+                if (overlap.x < overlap.y && overlap.x < overlap.z) { // check which axis it was *most likely* on
                     collisionNormal = Vector3f32{sign(relativeCenter.x), 0, 0}
                 } else if (overlap.y < overlap.x && overlap.y < overlap.z) {
                     collisionNormal = Vector3f32{0, sign(relativeCenter.y), 0}
@@ -115,16 +99,17 @@ main :: proc () {
                     collisionNormal = Vector3f32{0, 0, sign(relativeCenter.z)}
                 }
 
+                // get correction distance so that we don't collide anymore
                 collisionDistanceX := math.abs(predictedCenter.x - bbCenter.x) - (predictedExtents.x + bbExtents.x)
                 collisionDistanceY := math.abs(predictedCenter.y - bbCenter.y) - (predictedExtents.y + bbExtents.y)
                 collisionDistanceZ := math.abs(predictedCenter.z - bbCenter.z) - (predictedExtents.z + bbExtents.z)
 
                 collisionDistance := math.min(collisionDistanceX, collisionDistanceY, collisionDistanceZ)
 
-                if collisionNormal.y > 0.9 || collisionNormal.y < -0.9 {
+                if collisionNormal.y > 0.9 || collisionNormal.y < -0.9 { // this implies we've hit the ground OR a roof, kinda wacky.
                     jumping = false
                     onGround = true
-                }                
+                }
 
                 collisionNormal = linalg.normalize(collisionNormal)
                 playerVel -= linalg.dot(playerVel, collisionNormal) * collisionNormal
@@ -138,9 +123,7 @@ main :: proc () {
                 notTouchingCount -= 1
             }
         }
-        if notTouchingCount <= 0 {
-            onGround = false
-        }
+        onGround = notTouchingCount > 0
 
         camera.position += playerVel
         camera.target += playerVel
@@ -150,6 +133,10 @@ main :: proc () {
         playerBB.min = playerOriginalBB.min+playerPos
         playerBB.max = playerOriginalBB.max+playerPos
 
+        // simulate friction, air resistance, etc without doing expensive calculations
+        // I could add a whole friction system to my game, and read up on all the math 
+        // required to calculate the drag of a cylinder, but that's stupid, and expensive,
+        // and would require some stupid math I've read a thousand times before.
         playerVel.x *= 0.5*delta
         playerVel.z *= 0.5*delta
 
