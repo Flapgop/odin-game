@@ -140,7 +140,7 @@ main :: proc () {
         playerVel.x *= 0.5*delta
         playerVel.z *= 0.5*delta
 
-        direction := normalize_f32(camera.target - camera.position)
+        direction := linalg.normalize(camera.target - camera.position)
         angle := math.atan2(direction.x, direction.z)
 
         rl.BeginDrawing()
