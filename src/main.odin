@@ -66,7 +66,8 @@ main :: proc () {
     defer rl.EnableCursor()
     rl.SetTargetFPS(90)
     for !rl.WindowShouldClose() {
-        handle_movement(cam)
+        handle_movement(camera)
+        delta := rl.GetFrameTime()
 
         if !onGround {
             playerVel.y -= delta
