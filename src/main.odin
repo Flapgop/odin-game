@@ -66,7 +66,7 @@ main :: proc () {
     defer rl.EnableCursor()
     rl.SetTargetFPS(90)
     for !rl.WindowShouldClose() {
-        handle_movement(camera)
+        handle_movement(&camera)
         delta := rl.GetFrameTime()
 
         if !onGround {
@@ -76,7 +76,8 @@ main :: proc () {
         predictedPos := (camera.position+playerVel)-Vector3f32{0,1.75,0}
         predictedBB := rl.BoundingBox{playerOriginalBB.min + predictedPos, playerOriginalBB.max + predictedPos}
         notTouchingCount := len(objects)
-        for object in objects { // O(n^2) sucks, but I am absolutely not prepared to implement a sweep algorithm to make it O(n log(n)) or O(log(n)+n)
+        for object in objects { 
+            // O(n^2) sucks, but I am absolutely not prepared to implement a sweep algorithm to make it O(n log(n)) or O(log(n)+n)
             // this is actually only O(n+1), because I'm checking every object against the player
             // however if I were to add more dynamic objects other than the player this would end horribly
             // this also technically has support for rotation and OBB but that's a really complicated system

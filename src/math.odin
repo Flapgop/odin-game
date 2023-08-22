@@ -17,7 +17,7 @@ rotate_axis_angle_f32 :: proc(v, axis: linalg.Vector3f32, angle: f32) -> linalg.
     length := linalg.length(axis)
     // if length == 0 do length = 1
     // branchless, fast, fancy
-    length += f32(length == 0) // if length is zero, length += 1, else, length += 0
+    length += f32(i32(length == 0)) // if length is zero, length += 1, else, length += 0
     ilength := 1/length
 
     t := angle/2
